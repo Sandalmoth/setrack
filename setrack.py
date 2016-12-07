@@ -3,9 +3,9 @@ import configparser
 import click
 
 
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 
-RECORD_FIELDNAMES = ['date', 'exercise', 'sets', 'reps', 'weight', 'bodyweight']
+RECORD_FIELDNAMES = ['date', 'exercise', 'sets', 'reps', 'weight', 'rpe', 'bodyweight']
 DATABASE_FIELDNAMES = ['exercise', 'aliases', 'bwratio']
 
 
@@ -104,7 +104,7 @@ def entry(control, exercise, aliases, bwratio):
 
 @main.group()
 @pass_control
-def rec():
+def rec(control):
 	"""Record-handling function group"""
 	ctrl = configparser.ConfigParser()
 	ctrl.read(control.inf)
@@ -112,10 +112,14 @@ def rec():
 	control.rf = ctrl['RECORD']['filename']
 
 @rec.command()
+@click.option('-e', --'exercise', type=str)
 @pass_control
-def insert(control):
-	"""Enter session recording environment for specified file"""
-	csv.DictWriter(control.inf)
+def entry(control, exercise):
+	"""Add an entry to the record"""
+	rdr = csv.DictReader(control.dbf)
+	wtr = csv.DictWriter(control.rf)
+
+
 
 
 if __name__ == '__main__':
