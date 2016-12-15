@@ -1,6 +1,7 @@
 import csv
 import configparser
 import click
+import datetime
 
 
 VERSION = '0.0.2'
@@ -89,6 +90,7 @@ def db(control):
 @click.argument('aliases', type=str, nargs=-1)
 @pass_control
 def entry(control, exercise, aliases, bwratio):
+	'''Add an entry to the database'''
 	with open(control.dbf, 'a') as dbf:
 		wtr = csv.DictWriter(dbf, fieldnames=DATABASE_FIELDNAMES)
 		wtr.writerow({
@@ -96,6 +98,18 @@ def entry(control, exercise, aliases, bwratio):
 			DATABASE_FIELDNAMES[1]: ' '.join(aliases),
 			DATABASE_FIELDNAMES[2]: bwratio
 		})
+
+
+@db.command()
+@pass_control
+def prnt(control):
+	'''Print database in readable format'''
+	with open(control.dbf, 'r') as dbf:
+		rdr = csv.DictReader(dbf)
+		print('\tExercise BWratio Aliases')
+		for i, row in enumerate(rdr):
+			print(i, row['exercise'], ' ' + row['bwratio'], ' ' + row['aliases'],  sep='\t')
+
 
 
 ####################
@@ -112,15 +126,73 @@ def rec(control):
 	control.rf = ctrl['RECORD']['filename']
 
 @rec.command()
-@click.option('-e', --'exercise', type=str)
+@click.option('--year', type=int)
+@click.option('--month', type=int)
+@click.option('--day', type=int)
+@click.option('-e', '--exercise', type=str)
+@click.option('-s', '--sets', type=int, default=1)
+@click.option('-r', '--reps', type=int)
+@click.option('-w', '--weight', type=int)
+@click.option('--rpe', type=int)
+@click.option('--bw', type=float)
 @pass_control
-def entry(control, exercise):
+def entry(control, year, month, day, exercise, sets, reps, weight, rpe, bw):
 	"""Add an entry to the record"""
-	rdr = csv.DictReader(control.dbf)
-	wtr = csv.DictWriter(control.rf)
+
+	# Get the date
+	when = datetime.date.today()
+	if year != None:
+		when = datetime.date(year, when.month, when.day)
+	if month != None:
+		when = datetime.date(when.year, month, when.day)
+	if day != None:
+		when = datetime.date(when.year, when.month, day)
+	print(when)
+
+	with open(control.dbf, 'r') as dbf, open(control.rf, 'a') as rf:
+		rdr = csv.DictReader(dbf)
+		wtr = csv.DictWriter(rf, fieldnames=RECORD_FIELDNAMES)
+
+		# If we want to enter an exerces, make sure it exists
+		if exercise != None:
+			in_db = False
+			for row in rdr:
+				if (exercise == row['exercise'] or exercise in row['aliases'].split()):
+					exercise = row['exercise']
+					in_db = True
+			if not in_db:
+				print('Exercise:', exercise, 'not in database. Aborting entry.')
+				return 0
+
+		# A number of things are contingent, so if we don't have all we might as well have none
+		if exercise == None or reps == None or weight == None:
+			if exercise !=None or reps != None or weight != None:
+				print('Exercise, reps and weight have to be specified together')
+			exercise = None
+			sets = None
+			reps = None
+			weight = None
+			rpe = None
+
+		if exercise == None and sets == None and reps == None and weight == None and rpe == None and bw == None:
+			print('Nothing to enter.')
+			return 0
+
+		wtr.writerow({
+			RECORD_FIELDNAMES[0]: when,
+			RECORD_FIELDNAMES[1]: exercise,
+			RECORD_FIELDNAMES[2]: sets,
+			RECORD_FIELDNAMES[3]: reps,
+			RECORD_FIELDNAMES[4]: weight,
+			RECORD_FIELDNAMES[5]: rpe,
+			RECORD_FIELDNAMES[6]: bw
+		})
+
+
 
 
 
 
 if __name__ == '__main__':
 	main()
+	
