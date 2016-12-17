@@ -85,7 +85,7 @@ def db(control):
 
 
 @db.command()
-@click.option('--bwratio', type=float)
+@click.option('--bwratio', type=float, default=0.0)
 @click.argument('exercise', type=str)
 @click.argument('aliases', type=str, nargs=-1)
 @pass_control
@@ -132,8 +132,8 @@ def rec(control):
 @click.option('-e', '--exercise', type=str)
 @click.option('-s', '--sets', type=int, default=1)
 @click.option('-r', '--reps', type=int)
-@click.option('-w', '--weight', type=int)
-@click.option('--rpe', type=int)
+@click.option('-w', '--weight', type=float)
+@click.option('--rpe', type=float)
 @click.option('--bw', type=float)
 @pass_control
 def entry(control, year, month, day, exercise, sets, reps, weight, rpe, bw):
