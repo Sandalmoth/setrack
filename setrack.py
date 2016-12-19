@@ -4,7 +4,7 @@ import click
 import datetime
 
 
-VERSION = '0.0.2'
+VERSION = '0.0.3'
 
 RECORD_FIELDNAMES = ['date', 'exercise', 'sets', 'reps', 'weight', 'rpe', 'bodyweight']
 DATABASE_FIELDNAMES = ['exercise', 'aliases', 'bwratio']
