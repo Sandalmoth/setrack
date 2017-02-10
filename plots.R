@@ -1,3 +1,5 @@
+#!/usr/bin/Rscript
+
 library(zoo)
 
 args = commandArgs(trailingOnly = TRUE)
@@ -19,7 +21,7 @@ rec$bodyweight = na.locf(rec$bodyweight)
 plot(bodyweight~date, data=rec)
 
 cl = rainbow(length(db$exercise))
-plot(1, type="n", xlab="", ylab="", xlim=c(min(rec$date), max(rec$date)), ylim=c(-50, max(rec$weight, na.rm=TRUE)))
+plot(1:length(rec$date)~rec$date, type="n", xlab="", ylab="", xlim=c(min(rec$date), max(rec$date)), ylim=c(-50, max(rec$weight, na.rm=TRUE)))
 for (i in 1:length(db$exercise)) {
 	# print(subset(rec$weight, rec$exercise==db$exercise[i]))
 	lines(weight~date, data=rec, subset=(exercise==as.character(db$exercise[i])), col = cl[i], type='b')
@@ -27,7 +29,7 @@ for (i in 1:length(db$exercise)) {
 legend("topleft", legend = db$exercise, col = cl, lwd = 1, cex = 0.5)
 
 cl = rainbow(length(db$exercise))
-plot(1, type="n", xlab="", ylab="", xlim=c(min(rec$date), max(rec$date)), ylim=c(0, max(rec$weight + rec$bodyweight, na.rm=TRUE)))
+plot(1:length(rec$date)~rec$date, type="n", xlab="", ylab="", xlim=c(min(rec$date), max(rec$date)), ylim=c(0, max(rec$weight + rec$bodyweight, na.rm=TRUE)))
 for (i in 1:length(db$exercise)) {
 	# print(subset(rec$weight, rec$exercise==db$exercise[i]))
 	lines((weight + bodyweight*db$bwratio[i])~date, data=rec, subset=(exercise==as.character(db$exercise[i])), col = cl[i], type='b')
