@@ -4,6 +4,7 @@ import csv
 import configparser
 import click
 import datetime
+import re as re
 
 
 VERSION = '0.0.3'
@@ -127,6 +128,7 @@ def rec(control):
 	control.dbf = ctrl['DATABASE']['filename']
 	control.rf = ctrl['RECORD']['filename']
 
+
 @rec.command()
 @click.option('--year', type=int)
 @click.option('--month', type=int)
@@ -189,6 +191,113 @@ def entry(control, year, month, day, exercise, sets, reps, weight, rpe, bw):
 			RECORD_FIELDNAMES[5]: rpe,
 			RECORD_FIELDNAMES[6]: bw
 		})
+
+
+@rec.command()
+@click.option('--year', type=int)
+@click.option('--month', type=int)
+@click.option('--day', type=int)
+@click.argument('exercise', type=str)
+@click.argument('festr', type=str)
+@pass_control
+def fe(control, year, month, day, exercise, festr):
+	"""Short-form entry SETSxREPSxWEIGHT(@RPE) or REPS,REPS,...,REPSxWEIGHT(@RPE)"""
+
+	# Get the date
+	when = datetime.date.today()
+	if year != None:
+		when = datetime.date(year, when.month, when.day)
+	if month != None:
+		when = datetime.date(when.year, month, when.day)
+	if day != None:
+		when = datetime.date(when.year, when.month, day)
+	print(when)
+
+	# some variables are not used here every time but needed for printing to record
+	replist = None
+	reps = None
+	rpe = None
+	sets = None
+	bw = None
+
+	# Parse the quick string
+	# Identify set/rep format
+	xform = bool(re.search(r',', festr))
+	if xform:
+		replist = re.match(r'\A(.+)x[^@]+(@.+)?', festr).group(1)
+		weight = re.match(r'\A.+x([^@]+)(@.+)?', festr).group(1)
+		rpe = re.match(r'\A.+x[^@]+(@(.+))?', festr).group(2)
+		replist = replist.split(',')
+		replist = [int(x) for x in replist]
+	else:
+		sets = re.match(r'\A(.+)x.+x[^@]+(@.+)?', festr).group(1)
+		reps = re.match(r'\A.+x(.+)x[^@]+(@.+)?', festr).group(1)
+		weight = re.match(r'\A.+x.+x([^@]+)(@.+)?', festr).group(1)
+		rpe = re.match(r'\A.+x.+x[^@]+(@(.+))?', festr).group(2)
+		reps = int(reps)
+		sets = int(sets)
+
+	# fix types
+	weight = float(weight)
+	if rpe: rpe = float(rpe)
+
+	if replist == None:
+		replist = [reps]*sets
+
+	print(replist)
+
+	snr = []
+	rprev = -1
+	for r in replist:
+		if r == rprev:
+			snr[-1][0] += 1
+		else:
+			snr.append([1, r])
+		rprev = r
+
+	print(snr)
+
+	for x in snr:
+		sets = x[0]
+		reps = x[1]
+		with open(control.dbf, 'r') as dbf, open(control.rf, 'a') as rf:
+			rdr = csv.DictReader(dbf)
+			wtr = csv.DictWriter(rf, fieldnames=RECORD_FIELDNAMES)
+
+			# If we want to enter an exerces, make sure it exists
+			if exercise != None:
+				in_db = False
+				for row in rdr:
+					if (exercise == row['exercise'] or exercise in row['aliases'].split()):
+						exercise = row['exercise']
+						in_db = True
+				if not in_db:
+					print('Exercise:', exercise, 'not in database. Aborting entry.')
+					return 0
+
+			# A number of things are contingent, so if we don't have all we might as well have none
+			if exercise == None or reps == None or weight == None:
+				if exercise !=None or reps != None or weight != None:
+					print('Exercise, reps and weight have to be specified together')
+				exercise = None
+				sets = None
+				reps = None
+				weight = None
+				rpe = None
+
+			if exercise == None and sets == None and reps == None and weight == None and rpe == None and bw == None:
+				print('Nothing to enter.')
+				return 0
+
+			wtr.writerow({
+				RECORD_FIELDNAMES[0]: when,
+				RECORD_FIELDNAMES[1]: exercise,
+				RECORD_FIELDNAMES[2]: sets,
+				RECORD_FIELDNAMES[3]: reps,
+				RECORD_FIELDNAMES[4]: weight,
+				RECORD_FIELDNAMES[5]: rpe,
+				RECORD_FIELDNAMES[6]: bw
+			})
 
 
 
