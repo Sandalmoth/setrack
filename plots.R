@@ -59,11 +59,11 @@ epley = function(weight, reps) {
 # TODO figure out why i couldn't just do this with rec$orm = epley(rec$weight, rec$reps)'
 tmpv = 0
 for (i in 1:length(rec$date)) {
-  tmpv = c(tmpv, epley((rec$weight[i] + rec$bodyweight[i]*db$bwratio[rec$exercise[i]]), rec$reps[i]))
+  tmpv = c(tmpv, epley((rec$weight[i] + rec$bodyweight[i]*db$bwratio[rec$exercise[i]]) - rec$bodyweight[i]*db$bwratio[rec$exercise[i]], rec$reps[i]))
 }
 rec$orm = tmpv[2:length(tmpv)]
 ormagg = aggregate(orm~date+exercise, data=rec, max)
-plot(1:length(rec$date)~rec$date, type="n", xlab="", ylab="", xlim=c(min(rec$date), max(rec$date)), ylim=c(0, max(ormagg$orm, na.rm=TRUE)))
+plot(1:length(rec$date)~rec$date, type="n", xlab="", ylab="", xlim=c(min(rec$date), max(rec$date)), ylim=c(min(ormagg$orm, na.rm=TRUE), max(ormagg$orm, na.rm=TRUE)))
 for (i in 1:length(db$exercise)) {
 	# print(subset(rec$weight, rec$exercise==db$exercise[i]))
 	lines(orm~date, data=ormagg, subset=(exercise==as.character(db$exercise[i])), col = cl[i], type='b')
