@@ -42,6 +42,7 @@ legend("topleft", legend = db$exercise, col = cl, lwd = 1, cex = 0.5)
 cl = rainbow(length(db$exercise))
 rec$loadvol = (rec$weight + rec$bodyweight*db$bwratio[rec$exercise])*rec$sets*rec$reps
 lvagg = aggregate(loadvol~date+exercise, data=rec, sum)
+print(lvagg)
 plot(1:length(rec$date)~rec$date, type="n", xlab="", ylab="", xlim=c(min(rec$date), max(rec$date)), ylim=c(0, max(lvagg$loadvol, na.rm=TRUE)))
 for (i in 1:length(db$exercise)) {
 	# print(subset(rec$weight, rec$exercise==db$exercise[i]))
