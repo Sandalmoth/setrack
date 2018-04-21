@@ -106,10 +106,24 @@ def main():
     fig, ax = plt.subplots(nrows=2, ncols=2)
     plt.tight_layout()
 
+    # Bodyweight plot
+
+    coming_days = [datetime.timedelta(days=x - 28) + dates[-1] for x in range(58)]
+    ax[0][0].plot(coming_days, [bw[-1] for __ in coming_days], linestyle=':', color='lightgray', alpha=0.6)
+    ax[0][0].plot(coming_days, [bw[-1] + (i - 28)/7 for i, __ in enumerate(coming_days)], linestyle=':', color='lightgray', alpha=0.6)
+    ax[0][0].plot(coming_days, [bw[-1] - (i - 28)/7 for i, __ in enumerate(coming_days)], linestyle=':', color='lightgray', alpha=0.6)
+    ax[0][0].plot(coming_days, [bw[-1] + (i - 28)/14 for i, __ in enumerate(coming_days)], linestyle=':', color='lightgray', alpha=0.6)
+    ax[0][0].plot(coming_days, [bw[-1] - (i - 28)/14 for i, __ in enumerate(coming_days)], linestyle=':', color='lightgray', alpha=0.6)
+    ax[0][0].plot(coming_days, [bw[-1] + (i - 28)/28 for i, __ in enumerate(coming_days)], linestyle=':', color='lightgray', alpha=0.6)
+    ax[0][0].plot(coming_days, [bw[-1] - (i - 28)/28 for i, __ in enumerate(coming_days)], linestyle=':', color='lightgray', alpha=0.6)
+
     ax[0][0].plot(dates, bw, '.')
     ax[0][0].plot(dates, moving_median(bw))
     ax[0][0].plot(dates, moving_mean(bw, window=9))
     ax[0][0].set_ylabel('bodyweight')
+    ax[0][0].grid(b=True, which='major', color='lightgray', linestyle='--')
+
+    # Lifted weight
 
     for ex in database.keys():
         xax = [x for x, y in zip(dates, record[ex]) if y]
@@ -119,6 +133,9 @@ def main():
         print(yax)
         ax[0][1].plot(xax, yax, '-o')
         ax[0][1].set_ylabel('Weight + (partial) bodyweight')
+        ax[0][1].grid(b=True, which='major', color='lightgray', linestyle='--')
+
+    # Estimated 1rm
 
     orm = epley
     for ex in database.keys():
@@ -128,6 +145,8 @@ def main():
         print(yax)
         ax[1][0].plot(xax, yax, '-o')
         ax[1][0].set_ylabel('Estimated 1rm')
+        ax[1][0].legend()
+        ax[1][0].grid(b=True, which='major', color='lightgray', linestyle='--')
 
     plt.show()
 
