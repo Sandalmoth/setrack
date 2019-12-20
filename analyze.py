@@ -48,6 +48,7 @@ def moving_mean(v, window=5):
 
 def epley(w, r):
     return w * (1 + r/30)
+    # return w * r/30
 
 
 
@@ -140,13 +141,24 @@ def main():
     orm = epley
     for ex in database.keys():
         xax = [x for x, y in zip(dates, record[ex]) if y]
-        yax = [max([epley(z[2] + bw[dates.index(x)]*database[ex], z[1]) - bw[dates.index(x)]*database[ex] for z in y]) for x, y in zip(dates, record[ex]) if y]
+        yax = [max([epley(z[2] + bw[dates.index(x)]*database[ex], z[1]) - bw[dates.index(x)]*database[ex] if z[1] > 1 else z[2] for z in y]) for x, y in zip(dates, record[ex]) if y]
         print(xax)
         print(yax)
         ax[1][0].plot(xax, yax, '-o')
         ax[1][0].set_ylabel('Estimated 1rm')
         ax[1][0].legend()
         ax[1][0].grid(b=True, which='major', color='lightgray', linestyle='--')
+
+    # Volume
+
+    for ex in database.keys():
+        xax = [x for x, y in zip(dates, record[ex]) if y]
+        yax = [sum([(z[2]+bw[dates.index(x)]*database[ex])*z[1]*z[0] for z in y]) + bw[dates.index(x)]*database[ex] for x, y in zip(dates, record[ex]) if y]
+        print(xax)
+        print(yax)
+        ax[1][1].plot(xax, yax, '-o')
+        ax[1][1].set_ylabel('Total volume')
+        ax[1][1].grid(b=True, which='major', color='lightgray', linestyle='--')
 
     plt.show()
 
