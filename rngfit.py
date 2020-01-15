@@ -17,7 +17,8 @@ from matplotlib import cm
 from matplotlib import dates as mdates
 from matplotlib.colors import Normalize
 from matplotlib.dates import MO
-from scipy.optimize import minimize
+# from scipy.optimize import minimize
+from scipy.optimize import curve_fit
 
 
 def general_epley(weight, reps, slope=29.0):
@@ -42,8 +43,6 @@ def get_weights(dates, reference_date=None):
         reference_date = max(dates)
     ages = np.array([abs((reference_date - x).days) for x in dates])
     age_weights = ages/30 + 1
-    # age_weights = np.ceil(age_weights + 1)
-    age_weights = age_weights**2
     return age_weights
 
 
@@ -51,11 +50,15 @@ def fit_rmcurve(amraps, reference_date=None):
     rps = amraps['reps']
     wts = amraps['weight']
     age_weights = get_weights(amraps['date'], reference_date)
-    return minimize(
-        lambda x: np.sum((rps - inverse_general_epley(x[0], wts, x[1]))**2 / age_weights),
-        [300.0, 29.0],
-        method='L-BFGS-B'
-    ).x
+    res = curve_fit(
+        lambda x, y, z: np.array([inverse_general_epley(y, w, z) for w in wts]),
+        wts,
+        rps,
+        [max(wts), 29.0],
+        age_weights
+    )
+    sigma = np.sqrt(np.diag(res[1]))
+    return res[0][0], res[0][1], sigma[0], sigma[1]
 
 
 def parse_amraps(amrap_string):
@@ -191,10 +194,14 @@ def plotfit(control):
         this_axs = axs[int(i/grid_size)][i%grid_size]
         amraps = parse_amraps(db[exercise]['amraps'])
         x_axis = np.linspace(1, 15, 100)
-        orm, slope = fit_rmcurve(amraps)
+        orm, slope, sigma_orm, sigma_slope = fit_rmcurve(amraps)
         rmcurve = forward_general_epley(orm, x_axis, slope)
         print(exercise, orm, slope)
         weights = get_weights(amraps['date'])
+        upper_rmcurve = forward_general_epley(orm, x_axis, slope + sigma_slope) + sigma_orm
+        lower_rmcurve = forward_general_epley(orm, x_axis, slope - sigma_slope) - sigma_orm
+        this_axs.plot(x_axis, upper_rmcurve, color='lightgrey', linewidth=1.0, linestyle='--')
+        this_axs.plot(x_axis, lower_rmcurve, color='lightgrey', linewidth=1.0, linestyle='--')
         this_axs.scatter(amraps['reps'], amraps['weight'],
                          s=weights*10,
                          c=-weights,
@@ -219,7 +226,7 @@ def plotfit(control):
 
 @main.command()
 @pass_control
-@click.option('--future/--no-future', default=False)
+@click.option('--future/--no-future', default=True)
 def plottime(control, future):
     db = toml.load(control.dbfile)
 
@@ -228,6 +235,8 @@ def plottime(control, future):
 
     fig, axs = plt.subplots(nrows=grid_size, ncols=grid_size)
 
+    years = mdates.YearLocator()
+    years_fmt = mdates.DateFormatter('%Y')
     months = mdates.MonthLocator()
     months_fmt = mdates.DateFormatter('%Y-%m')
     days = mdates.WeekdayLocator(byweekday=MO)
@@ -240,25 +249,32 @@ def plottime(control, future):
         else:
             x_axis = amraps['date']
         rm_axis = []
+        rm_axis_lower = []
+        rm_axis_upper = []
         rms = [1, 5, 10]
         linestyles = ['-', '--', 'dotted']
         for j, date in enumerate(x_axis):
             if future:
-                orm, slope = fit_rmcurve(amraps, date)
+                orm, slope, sigma_orm, sigma_slope = fit_rmcurve(amraps, date)
                 rm_axis.append([round(forward_general_epley(orm, x, slope), 1) for x in rms])
+                rm_axis_upper.append([round(forward_general_epley(orm, x, slope + sigma_slope) + sigma_orm, 1) for x in rms])
+                rm_axis_lower.append([round(forward_general_epley(orm, x, slope - sigma_slope) - sigma_orm, 1) for x in rms])
             else:
                 if j == 0:
                     continue
                 old_amraps = {k: v[:j + 1] for k, v in amraps.items()}
-                orm, slope = fit_rmcurve(old_amraps)
+                orm, slope, sigma_orm, sigma_slope = fit_rmcurve(old_amraps)
                 rm_axis.append([round(forward_general_epley(orm, x, slope), 1) for x in rms])
+                rm_axis_upper.append([round(forward_general_epley(orm, x, slope + sigma_slope) + sigma_orm, 1) for x in rms])
+                rm_axis_lower.append([round(forward_general_epley(orm, x, slope - sigma_slope) - sigma_orm, 1) for x in rms])
         if not future:
             x_axis = x_axis[1:]
         for j, rm in enumerate(rms):
+            this_axs.fill_between(x_axis, [x[j] for x in rm_axis_lower], [x[j] for x in rm_axis_upper], color='lightgrey', alpha=0.5)
             this_axs.plot(x_axis, [x[j] for x in rm_axis], color='k', linestyle=linestyles[j])
-        this_axs.xaxis.set_major_locator(months)
-        this_axs.xaxis.set_major_formatter(months_fmt)
-        this_axs.xaxis.set_minor_locator(days)
+        this_axs.xaxis.set_major_locator(years)
+        this_axs.xaxis.set_major_formatter(years_fmt)
+        this_axs.xaxis.set_minor_locator(months)
         this_axs.grid(which='minor')
         this_axs.set_title(exercise)
         this_axs.format_xdata = mdates.DateFormatter('%Y-%m-%d')
